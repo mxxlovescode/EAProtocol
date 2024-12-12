@@ -6,19 +6,18 @@
 #include <HardwareSerial.h>
 #include <ArduinoLog.h> // Подключение ArduinoLog для логирования
 
-// Константы протокола
-#define EA_PROTOCOL_MAX_MESSAGE_LENGTH 256
-#define EA_PROTOCOL_BUFFER_SIZE 256
-
-
 class EAprotocol {
 public:
     // Конструктор и деструктор
-    EAprotocol(HardwareSerial &serialPort, char endOfMessage = '\n', unsigned long timeout = 1000, long baudRate = 115200);
+    EAprotocol(HardwareSerial &serialPort, char endOfMessage = '\n', unsigned long timeout = 1000, size_t bufferSize = 256);
+
+    ~EAprotocol();
 
     // Основной цикл обработки
     void tick();
-void processMessage();
+    void readDataToBuffer();
+    void processMessage();
+
 private:
 
     // Членские переменные
@@ -26,7 +25,8 @@ private:
     char _endOfMessage;
     unsigned long _timeout;
 
-    char _buffer[EA_PROTOCOL_BUFFER_SIZE];            // Буфер для хранения данных
+    size_t _bufferSize;
+    char *_buffer;            // Буфер для хранения данных
     unsigned long _lastReceiveTime;                   // Время последнего принятого символа
 };
 
