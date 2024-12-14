@@ -10,6 +10,7 @@
             "includePath": [
                 "c:/Users/tunev/OneDrive/Документы/PlatformIO/Projects/EAProtocol/include",
                 "c:/Users/tunev/OneDrive/Документы/PlatformIO/Projects/EAProtocol/src",
+                "c:/Users/tunev/OneDrive/Документы/PlatformIO/Projects/EAProtocol/.pio/libdeps/esp07/mString/src",
                 "c:/Users/tunev/OneDrive/Документы/PlatformIO/Projects/EAProtocol/.pio/libdeps/esp07/ArduinoLog",
                 "C:/Users/tunev/.platformio/packages/framework-arduinoespressif8266/tools/sdk/include",
                 "C:/Users/tunev/.platformio/packages/framework-arduinoespressif8266/cores/esp8266",
@@ -60,6 +61,7 @@
                 "path": [
                     "c:/Users/tunev/OneDrive/Документы/PlatformIO/Projects/EAProtocol/include",
                     "c:/Users/tunev/OneDrive/Документы/PlatformIO/Projects/EAProtocol/src",
+                    "c:/Users/tunev/OneDrive/Документы/PlatformIO/Projects/EAProtocol/.pio/libdeps/esp07/mString/src",
                     "c:/Users/tunev/OneDrive/Документы/PlatformIO/Projects/EAProtocol/.pio/libdeps/esp07/ArduinoLog",
                     "C:/Users/tunev/.platformio/packages/framework-arduinoespressif8266/tools/sdk/include",
                     "C:/Users/tunev/.platformio/packages/framework-arduinoespressif8266/cores/esp8266",
