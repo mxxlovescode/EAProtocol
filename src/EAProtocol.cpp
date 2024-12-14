@@ -10,7 +10,7 @@ EAprotocol::~EAprotocol() {
     cleanupLargeDataBuffer();
 }
 
-// Конструктор
+// КонструкторПП
 EAprotocol::EAprotocol(HardwareSerial &serialPort, char endOfMessage, unsigned long timeout)
   : _serial(serialPort), _endOfMessage(endOfMessage), _timeout(timeout),
     _lastTime(0), _receiving(false), _incomingLength(0),
