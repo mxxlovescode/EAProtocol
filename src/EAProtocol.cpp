@@ -16,49 +16,83 @@ void EAprotocol::tick() {
     readDataToBuffer();
 
     // Если в буфере есть данные, обрабатываем их
-    if (strlen(_buffer) > 0) {
-        processMessage();
-        _buffer[0] = '\0'; // Сбрасываем только указатель после обработки
+    if (_buffer[0] != '\0') {
+            processMessage();
+            memset(_buffer, 0, _bufferSize);
     }
 }
 
+void EAprotocol::registerCommand(const char* command, void (*handler)(const char*)) {
+    
+}
+
+void EAprotocol::sendCommand(const String& command, const String& data) {
+    _serial.print(COMMAND_MARKER);
+    _serial.print(command);
+    if (!data.isEmpty()) {
+        _serial.print(':');
+        _serial.print(data);
+    }
+    _serial.print(_endOfMessage);
+}
+
+
 void EAprotocol::readDataToBuffer() {
     unsigned long startMillis = millis();
-    size_t bufferLength = strlen(_buffer); // Отслеживаем длину буфера
 
-    // Читаем данные, пока они доступны, или до истечения таймаута
-    while (millis() - startMillis < _timeout) {
+    while (millis() - startMillis < _timeout) {     // Читаем данные, пока они доступны, или до истечения таймаута
+        
         if (_serial.available() > 0) {
             char c = (char)_serial.read();
-            _lastReceiveTime = millis(); // Обновляем время последнего принятого символа
 
             // Добавляем символ в буфер, если есть место
-            if (bufferLength < _bufferSize - 1) {
-                _buffer[bufferLength++] = c;
-                _buffer[bufferLength] = '\0'; // Обеспечиваем корректное завершение строки
+            if (_currentBufferLength < _bufferSize - 1) {
+                _buffer[_currentBufferLength] = c;
+                _buffer[_currentBufferLength] = '\0'; // Обеспечиваем корректное завершение строки
             } else {
                 Log.warning(F("Буфер переполнен. Обработка данных."));
                 processMessage(); // Обрабатываем данные при переполнении
-                memset(_buffer, 0, _bufferSize);
-                bufferLength = 0;
+                _currentBufferLength = 0;
             }
 
             // Проверяем конец сообщения
             if (c == _endOfMessage) {
-                Log.notice(F("Сообщение завершено символом конца. Чтение завершено."));
+                Log.trace(F("Сообщение завершено символом конца. Чтение завершено."));
                 break; // Завершаем чтение, если получен конец сообщения
             }
         }
-    }
-
-    if (bufferLength > 0 && millis() - startMillis >= _timeout) {
-        Log.warning(F("Таймаут истек. Обработка данных."));
-        processMessage(); // Обрабатываем данные по таймауту
-        memset(_buffer, 0, _bufferSize);
     }
 }
 
 void EAprotocol::processMessage()
 {
-    Serial.println(_buffer);
+    mString(_buffer, 256);
+    if (_buffer[0] == COMMAND_MARKER) {
+        // Вытаскиваем саму комманду
+        const char* command_position = std::strstr(_buffer, "=");
+
+        if (command_position) {
+            size_t commnand_length = command_position - _buffer +1;                         // Вычисляем длинну комманды
+            size_t args_length = _currentBufferLength - (command_position - _buffer + 1);   // Вычисляем длинну аргументов
+            
+            Log.verboseln(F("Выделенная комманда [%s]"), strcpy(_buffer + 1, command_position);
+            Log.verboseln(F("Аргументы: [%s]"), std::strcpy(_buffer + 1 + commnand_length, );
+        }
+        else {
+            std::string ex_command(_buffer +1, _currentBufferLength);               // Тут передаем диапазон для экстракции
+            Log.verboseln(F("Выделенная комманда [%s]"), ex_command);
+        }
+
+    }
+    else {
+        _handleLog();
+    }
+
+    memset(_buffer, 0, _bufferSize);
+    _currentBufferLength = 0; // Сброс длины буфера после обработки
+}
+
+void EAprotocol::_handleLog()
+{
+    Log.noticeln(F("<---[%s]"), std::string(_buffer[1], _buffer[_currentBufferLength]));
 }
