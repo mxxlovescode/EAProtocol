@@ -29,20 +29,10 @@ public:
 
     void tick();   // Основной метод обработки данных
 
-    // Структура для хранения команды и её обработчика
-    struct Command {
-        uint32_t command_name_hash;     // Хеш имени команды
-        void (*handler)(const char*);   // Указатель на функцию-обработчик
-    };
-
     // Регистрация команды
     // commandName: имя команды
     // handler: обработчик команды
     void registerCommand(const char* commandName, void (*handler)(const char*));
-
-    // Выполнение команды
-    // command: строка с именем команды
-    void executeCommand(const char* command);
 
     // Отправка команды с данными
     // command: имя команды
@@ -51,9 +41,6 @@ public:
 
     // Чтение данных из последовательного порта во внутренний буфер
     void readDataToBuffer();
-
-    // Обработка сообщения из буфера
-    void processMessage();
 
     // Возвращает содержимое буфера
     char *getBuff();
@@ -69,8 +56,21 @@ private:
 
     uint32_t hashString(const char *str); // Функция для хеширования строк
 
+    // Структура для хранения команды и её обработчика
+    struct Command {
+        uint32_t command_name_hash;     // Хеш имени команды
+        void (*handler)(const char*);   // Указатель на функцию-обработчик
+    };
+
     Command commands[MAX_NUMBER_OF_COMMAND]; // Массив зарегистрированных команд
     int commandCount;                      // Текущее количество зарегистрированных команд
+
+    // Выполнение команды
+    // command: строка с именем команды
+    void executeCommand(const char* command);
+
+    // Обработка сообщения из буфера
+    void processMessage();
 
     mString<MBUFFER_SIZE> _mBuffer;       // Внутренний буфер для приема данных
 };
