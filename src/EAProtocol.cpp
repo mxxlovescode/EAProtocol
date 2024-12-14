@@ -1,98 +1,118 @@
 #include <EAProtocol.h>
 
-EAprotocol::EAprotocol(HardwareSerial &serialPort, char endOfMessage, unsigned long timeout, size_t bufferSize) : 
-    _serial(serialPort), _endOfMessage(endOfMessage), _timeout(timeout), _bufferSize(bufferSize){
+EAprotocol::EAprotocol(HardwareSerial &serialPort, char endOfMessage, unsigned long timeout) : 
+    _serial(serialPort), _endOfMessage(endOfMessage), _timeout(timeout), commandCount(0) {
+    }
+
+void EAprotocol::begin(){
     _serial.begin(115200);
-    _buffer = new char[_bufferSize]; // Выделяем память
-    memset(_buffer, 0, _bufferSize); // Инициализируем буфер
+    _mBuffer.clear();
 }
 
 EAprotocol::~EAprotocol() {
-    delete[] _buffer; // Освобождаем память при уничтожении объекта
 }
 
 void EAprotocol::tick() {
     // Сначала читаем данные во внутренний буфер
-    readDataToBuffer();
+    if (_serial.available() > 0) readDataToBuffer();
 
     // Если в буфере есть данные, обрабатываем их
-    if (_buffer[0] != '\0') {
-            processMessage();
-            memset(_buffer, 0, _bufferSize);
+    if (_mBuffer.length() > 0) processMessage();
+}
+
+void EAprotocol::registerCommand(const char* command_name, void (*handler)(const char*)) {
+    if (commandCount < 10) {  // Проверка, есть ли место для новых команд
+        commands[commandCount].command_name_hash = hashString(command_name);
+        commands[commandCount].handler = handler;
+        commandCount++;  // Увеличиваем счетчик команд
     }
 }
 
-void EAprotocol::registerCommand(const char* command, void (*handler)(const char*)) {
-    
+void EAprotocol::executeCommand(const char* command) {
+    uint32_t commandHash = hashString(command);  // Вычисляем хеш команды
+    for (int i = 0; i < commandCount; i++) {
+        if (commands[i].command_name_hash == commandHash) {
+            commands[i].handler(command);  // Вызываем обработчик
+            return;
+        }
+    }
+    Log.warningln(F("Неизвестная комманда: [%s]"), command); // Если команда не найдена
 }
+
 
 void EAprotocol::sendCommand(const String& command, const String& data) {
-    _serial.print(COMMAND_MARKER);
-    _serial.print(command);
-    if (!data.isEmpty()) {
-        _serial.print(':');
-        _serial.print(data);
-    }
-    _serial.print(_endOfMessage);
 }
 
 
 void EAprotocol::readDataToBuffer() {
     unsigned long startMillis = millis();
 
+    char c;
+
     while (millis() - startMillis < _timeout) {     // Читаем данные, пока они доступны, или до истечения таймаута
         
-        if (_serial.available() > 0) {
-            char c = (char)_serial.read();
+        c = _serial.read();
 
-            // Добавляем символ в буфер, если есть место
-            if (_currentBufferLength < _bufferSize - 1) {
-                _buffer[_currentBufferLength] = c;
-                _buffer[_currentBufferLength] = '\0'; // Обеспечиваем корректное завершение строки
-            } else {
-                Log.warning(F("Буфер переполнен. Обработка данных."));
-                processMessage(); // Обрабатываем данные при переполнении
-                _currentBufferLength = 0;
-            }
+        if (c == -1 || c == '\r') {
+            continue; // Игнорируем \r
+        }
+        // Проверяем конец сообщения
+        if (c == _endOfMessage) {
+            Log.traceln(F("Сообщение завершено символом конца. Чтение завершено. Принятых символов: [%d]"), _mBuffer.length());
+            break; // Завершаем чтение, если получен конец сообщения
+        }
 
-            // Проверяем конец сообщения
-            if (c == _endOfMessage) {
-                Log.trace(F("Сообщение завершено символом конца. Чтение завершено."));
-                break; // Завершаем чтение, если получен конец сообщения
-            }
+        // Добавляем символ в буфер, если есть место
+        if (_mBuffer.capacity() - _mBuffer.length() > 0) {
+            _mBuffer.add(c); 
+        } else {
+            Log.warning(F("Буфер переполнен. Обработка данных."));
+            processMessage(); // Обрабатываем данные при переполнении
         }
     }
 }
 
 void EAprotocol::processMessage()
 {
-    mString(_buffer, 256);
-    if (_buffer[0] == COMMAND_MARKER) {
-        // Вытаскиваем саму комманду
-        const char* command_position = std::strstr(_buffer, "=");
+    if (_mBuffer.startsWith(COMMAND_MARKER)) { // Если комманда
+        
+        _mBuffer.remove(0, 1);
+        int command_lenght = _mBuffer.indexOf(COMMAND_DIVIDER, 0);
+                
+        if (command_lenght > 0) {
+            char command_name[command_lenght];
 
-        if (command_position) {
-            size_t commnand_length = command_position - _buffer +1;                         // Вычисляем длинну комманды
-            size_t args_length = _currentBufferLength - (command_position - _buffer + 1);   // Вычисляем длинну аргументов
+            Log.verboseln(F("Буффер: [%s]. Позиция разделителя: %d"), _mBuffer.buf, command_lenght);
             
-            Log.verboseln(F("Выделенная комманда [%s]"), strcpy(_buffer + 1, command_position);
-            Log.verboseln(F("Аргументы: [%s]"), std::strcpy(_buffer + 1 + commnand_length, );
+            _mBuffer.substring(0, command_lenght -1, command_name);
+            _mBuffer.remove(0, command_lenght + 1);
+            
+            Log.verboseln(F("Определена комманда: [%s]"), command_name);
+            executeCommand(command_name);
         }
-        else {
-            std::string ex_command(_buffer +1, _currentBufferLength);               // Тут передаем диапазон для экстракции
-            Log.verboseln(F("Выделенная комманда [%s]"), ex_command);
-        }
-
-    }
-    else {
-        _handleLog();
+        else executeCommand(_mBuffer.buf);
     }
 
-    memset(_buffer, 0, _bufferSize);
-    _currentBufferLength = 0; // Сброс длины буфера после обработки
+    else _handleLog();
+
+    // Очищаем буфер и счетчик.
+    _mBuffer.clear();
+}
+
+char *EAprotocol::getBuff()
+{
+    return _mBuffer.buf;
 }
 
 void EAprotocol::_handleLog()
 {
-    Log.noticeln(F("<---[%s]"), std::string(_buffer[1], _buffer[_currentBufferLength]));
+    Log.noticeln(F("<---[%s]"), _mBuffer.buf);
+}
+
+uint32_t EAprotocol::hashString(const char* str) {
+    uint32_t hash = 0;
+    while (*str) {
+        hash = (hash * 31) + *str++;
+    }
+    return hash;
 }
