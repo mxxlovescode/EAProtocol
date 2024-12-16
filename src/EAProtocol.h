@@ -16,7 +16,6 @@
 
 class EAprotocol {
 public:
-
     // Конструктор и деструктор
     // serialPort: аппаратный последовательный порт
     // endOfMessage: символ завершения сообщения (по умолчанию '\n')
@@ -32,7 +31,7 @@ public:
     // Регистрация команды
     // commandName: имя команды
     // handler: обработчик команды
-    void registerCommand(const char* commandName, void (*handler)(const char*));
+    void registerCommand(const char* commandName, void (*CommandHandler)(const char* command_name, const char* args[], size_t argCount));
 
     // Отправка команды с данными
     // command: имя команды
@@ -59,7 +58,7 @@ private:
     // Структура для хранения команды и её обработчика
     struct Command {
         uint32_t command_name_hash;     // Хеш имени команды
-        void (*handler)(const char*);   // Указатель на функцию-обработчик
+        void (*CommandHandler)(const char* command_name, const char* args[], size_t argCount);   // Указатель на функцию-обработчик
     };
 
     Command commands[MAX_NUMBER_OF_COMMAND]; // Массив зарегистрированных команд
@@ -73,6 +72,8 @@ private:
     void processMessage();
 
     mString<MBUFFER_SIZE> _mBuffer;       // Внутренний буфер для приема данных
+    typedef void (*CommandHandler)(const char* command_name, const std::vector<std::string>& args);
+
 };
 
 #endif // EA_PROTOCOL_H
