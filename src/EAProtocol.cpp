@@ -99,16 +99,17 @@ void EAprotocol::executeCommand(char *command, char **_args, const int *_args_am
 void EAprotocol::processMessage() {
     // Проверяем, начинается ли сообщение с маркера команды
     if (_mBuffer.startsWith(COMMAND_MARKER)) { 
+        
+        if (_mBuffer.endsWith(COMMAND_DIVIDER)) _mBuffer.truncate(1); // Чистим последний символ при необходимости
         _mBuffer.remove(0, 1);  // Удаляем маркер команды из буфера
+
         int command_lenght = _mBuffer.indexOf(COMMAND_DIVIDER, 0);  // Находим разделитель команды
-                
         if (command_lenght > 0) {
-            char command_name[command_lenght + 1];  // Создаем буфер для имени команды
-           
+            char command_name[command_lenght + 1];  // Создаем буфер для имени команды  
             _mBuffer.substring(0, command_lenght - 1, command_name);  // Извлекаем имя команды
             _mBuffer.remove(0, command_lenght + 1);  // Удаляем обработанную часть из буфера
-            char* _args[_mBuffer.splitAmount(COMMAND_DIVIDER)];
-            const int _args_amount = _mBuffer.split(_args, COMMAND_DIVIDER);
+            char* _args[_mBuffer.splitAmount(COMMAND_DIVIDER[0])];
+            const int _args_amount = _mBuffer.split(_args, COMMAND_DIVIDER[0]);
                         
             Log.verboseln(F("Определена комманда: [%s], определено аргументов [%d]."), command_name, _args_amount);
             executeCommand(command_name, _args, &_args_amount);  // Выполняем команду
