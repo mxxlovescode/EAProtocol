@@ -4,6 +4,7 @@
 // Инициализирует последовательный порт, символ окончания сообщения и таймаут
 EAprotocol::EAprotocol(HardwareSerial &serialPort, char endOfMessage, unsigned long timeout) : 
     _serial(serialPort), _endOfMessage(endOfMessage), _timeout(timeout), commandCount(0) {
+        Log.verboseln(F("Текущий счетчик комманд [%d]"), commandCount);
 }
 
 // Метод для инициализации последовательного порта и очистки буфера
@@ -25,28 +26,18 @@ void EAprotocol::tick() {
     if (_mBuffer.length() > 0) processMessage();
 }
 
-
 // Регистрация команды с обработчиком
 // command_name - имя команды, handler - указатель на функцию-обработчик
-void EAprotocol::registerCommand(const char* command_name, CommandHandler handler) {
-    if (commandCount < MAX_NUMBER_OF_COMMAND) {  // Проверка, есть ли место для новых команд
-        commands[commandCount].command_name_hash = hashString(command_name);  // Хешируем имя команды
+void EAprotocol::registerCommand(const char *commandName, void (*handler)(const char *command_name, const char **args, const int *argCount))
+{
+     if (commandCount < MAX_NUMBER_OF_COMMAND) {  // Проверка, есть ли место для новых команд
+        commands[commandCount].command_name_hash = hashString(commandName);  // Хешируем имя команды
         commands[commandCount].handler = handler;  // Сохраняем обработчик
         commandCount++;  // Увеличиваем счетчик команд
+        Log.verboseln(F("Зарегистрированна команда [%s], hash - [%l]\nВсего комманд [%d]"), commandName, hashString(commandName), commandCount);
     }
 }
 
-// Выполнение команды по ее имени
-void EAprotocol::executeCommand(const char* command, void (*CommandHandler)(const char* command_name, const char* args[], size_t argCount)) {
-    uint32_t commandHash = hashString(command);  // Вычисляем хеш команды
-    for (int i = 0; i < commandCount; i++) {
-        if (commands[i].command_name_hash == commandHash) {
-            commands[i].handler(command);  // Вызываем обработчик
-            return;
-        }
-    }
-    Log.warningln(F("Неизвестная комманда: [%s]"), command); // Если команда не найдена
-}
 
 // Отправка команды и данных (реализация пока отсутствует)
 void EAprotocol::sendCommand(const String& command, const String& data) {
@@ -83,6 +74,27 @@ void EAprotocol::readDataToBuffer() {
     }
 }
 
+//Выполнение комманды по ее имени
+void EAprotocol::executeCommand(char *command, char **_args, const int *_args_amount)
+{
+    
+    // Для дебага. Посимвольный вывод комманды.
+    // for (const char *p = command; *p; p++) {
+    //    Log.verboseln(F("[%c:%02X] "), *p, (unsigned char)*p);
+    //}
+
+    uint32_t commandHash = hashString(command);  // Вычисляем хеш команды
+    Log.verboseln(F("Исполняем комманду [%s], ХЭШ: [%l]"), command, commandHash);
+    for (int i = 0; i < commandCount; i++) {
+        if (commands[i].command_name_hash == commandHash) {
+            commands[i].handler(command, _args, _args_amount);  // Вызываем обработчик
+            return;
+        }
+    }
+    Log.warningln(F("Неизвестная комманда: [%s]"), command); // Если команда не найдена
+}
+
+
 // Обработка сообщения из буфера
 void EAprotocol::processMessage() {
     // Проверяем, начинается ли сообщение с маркера команды
@@ -91,15 +103,17 @@ void EAprotocol::processMessage() {
         int command_lenght = _mBuffer.indexOf(COMMAND_DIVIDER, 0);  // Находим разделитель команды
                 
         if (command_lenght > 0) {
-            char command_name[command_lenght];  // Создаем буфер для имени команды
+            char command_name[command_lenght + 1];  // Создаем буфер для имени команды
            
-            _mBuffer.substring(0, command_lenght -1, command_name);  // Извлекаем имя команды
+            _mBuffer.substring(0, command_lenght - 1, command_name);  // Извлекаем имя команды
             _mBuffer.remove(0, command_lenght + 1);  // Удаляем обработанную часть из буфера
+            char* _args[_mBuffer.splitAmount(COMMAND_DIVIDER)];
+            const int _args_amount = _mBuffer.split(_args, COMMAND_DIVIDER);
                         
-            Log.verboseln(F("Определена комманда: [%s]"), command_name);
-            executeCommand(command_name);  // Выполняем команду
+            Log.verboseln(F("Определена комманда: [%s], определено аргументов [%d]."), command_name, _args_amount);
+            executeCommand(command_name, _args, &_args_amount);  // Выполняем команду
         }
-        else executeCommand(_mBuffer.buf);  // Выполняем команду, если разделитель не найден
+        else executeCommand(_mBuffer.buf, nullptr, 0);  // Выполняем команду, если разделитель не найден
     } else {
         _handleLog();  // Если это не команда, логируем сообщение
     }

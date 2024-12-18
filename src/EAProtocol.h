@@ -12,7 +12,7 @@
 #define COMMAND_DIVIDER ';'          // Разделитель внутри команды
 
 #define MBUFFER_SIZE 256             // Размер буфера для обработки сообщений
-#define MAX_NUMBER_OF_COMMAND 5      // Максимальное количество поддерживаемых команд
+#define MAX_NUMBER_OF_COMMAND 2      // Максимальное количество поддерживаемых команд
 
 class EAprotocol {
 public:
@@ -31,7 +31,7 @@ public:
     // Регистрация команды
     // commandName: имя команды
     // handler: обработчик команды
-    void registerCommand(const char* commandName, void (*CommandHandler)(const char* command_name, const char* args[], size_t argCount));
+    void registerCommand(const char* commandName, void (*handler)(const char* command_name, const char **args, const int *argCount));
 
     // Отправка команды с данными
     // command: имя команды
@@ -58,22 +58,20 @@ private:
     // Структура для хранения команды и её обработчика
     struct Command {
         uint32_t command_name_hash;     // Хеш имени команды
-        void (*CommandHandler)(const char* command_name, const char* args[], size_t argCount);   // Указатель на функцию-обработчик
+        void (*handler)(const char *command_name, const char **_args, const int *argCount);   // Указатель на функцию-обработчик
     };
 
     Command commands[MAX_NUMBER_OF_COMMAND]; // Массив зарегистрированных команд
-    int commandCount;                      // Текущее количество зарегистрированных команд
+    int commandCount = 0;                      // Текущее количество зарегистрированных команд
 
     // Выполнение команды
     // command: строка с именем команды
-    void executeCommand(const char* command);
+    void executeCommand(char* command, char **_args, const int *_args_amount);
 
     // Обработка сообщения из буфера
     void processMessage();
 
     mString<MBUFFER_SIZE> _mBuffer;       // Внутренний буфер для приема данных
-    typedef void (*CommandHandler)(const char* command_name, const std::vector<std::string>& args);
-
 };
 
 #endif // EA_PROTOCOL_H
