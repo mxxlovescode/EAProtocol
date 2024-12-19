@@ -15,6 +15,7 @@ void EAprotocol::begin(){
 
 // Деструктор класса EAprotocol
 EAprotocol::~EAprotocol() {
+    
 }
 
 // Основной метод, который вызывается для обработки входящих данных
