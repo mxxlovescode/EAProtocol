@@ -102,6 +102,10 @@ void EAprotocol::processMessage() {
         
         if (_mBuffer.endsWith(COMMAND_DIVIDER)) _mBuffer.truncate(1); // Чистим последний символ при необходимости
         _mBuffer.remove(0, 1);  // Удаляем маркер команды из буфера
+        Log.verboseln(F("Длина: %d"), _mBuffer.length());
+
+        _mBuffer.updateLength();
+        Log.verboseln(F("Длина: %d"), _mBuffer.length());
 
         int command_lenght = _mBuffer.indexOf(COMMAND_DIVIDER, 0);  // Находим разделитель команды
         if (command_lenght > 0) {

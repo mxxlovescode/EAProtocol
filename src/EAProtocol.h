@@ -9,7 +9,7 @@
 #include <mString.h>
 
 #define COMMAND_MARKER "#"          // Маркер начала команды
-#define COMMAND_DIVIDER ';'          // Разделитель внутри команды
+#define COMMAND_DIVIDER ";"          // Разделитель внутри команды
 
 #define MBUFFER_SIZE 256             // Размер буфера для обработки сообщений
 #define MAX_NUMBER_OF_COMMAND 2      // Максимальное количество поддерживаемых команд
