@@ -29,7 +29,7 @@ void EAprotocol::tick() {
 
 // Регистрация команды с обработчиком
 // command_name - имя команды, handler - указатель на функцию-обработчик
-void EAprotocol::registerCommand(const char *commandName, void (*handler)(const char *command_name, const char **args, const int *argCount))
+void EAprotocol::registerCommand(const char *commandName, void (*handler)(char *command_name, const char **args, const int *argCount))
 {
      if (commandCount < MAX_NUMBER_OF_COMMAND) {  // Проверка, есть ли место для новых команд
         commands[commandCount].command_name_hash = hashString(commandName);  // Хешируем имя команды
@@ -88,7 +88,7 @@ void EAprotocol::executeCommand(char *command, char **_args, const int *_args_am
     Log.verboseln(F("Исполняем комманду [%s], ХЭШ: [%l]"), command, commandHash);
     for (int i = 0; i < commandCount; i++) {
         if (commands[i].command_name_hash == commandHash) {
-            commands[i].handler(command, _args, _args_amount);  // Вызываем обработчик
+            commands[i].handler(command, (const char**)_args, _args_amount);  // Вызываем обработчик
             return;
         }
     }
@@ -108,7 +108,7 @@ void EAprotocol::processMessage() {
         _mBuffer.updateLength();
         Log.verboseln(F("Длина: %d"), _mBuffer.length());
 
-        int command_lenght = _mBuffer.indexOf(COMMAND_DIVIDER, 0);  // Находим разделитель команды
+        int command_lenght = _mBuffer.indexOf((char *)COMMAND_DIVIDER, 0);  // Находим разделитель команды
         if (command_lenght > 0) {
             char command_name[command_lenght + 1];  // Создаем буфер для имени команды  
             _mBuffer.substring(0, command_lenght - 1, command_name);  // Извлекаем имя команды

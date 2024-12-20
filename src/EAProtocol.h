@@ -31,7 +31,7 @@ public:
     // Регистрация команды
     // commandName: имя команды
     // handler: обработчик команды
-    void registerCommand(const char* commandName, void (*handler)(const char* command_name, const char **args, const int *argCount));
+    void registerCommand(const char* commandName, void (*handler)(char* command_name, const char **args, const int *argCount));
 
     // Отправка команды с данными
     // command: имя команды
@@ -58,7 +58,7 @@ private:
     // Структура для хранения команды и её обработчика
     struct Command {
         uint32_t command_name_hash;     // Хеш имени команды
-        void (*handler)(const char *command_name, const char **_args, const int *argCount);   // Указатель на функцию-обработчик
+        void (*handler)(char *command_name, const char **_args, const int *argCount);   // Указатель на функцию-обработчик
     };
 
     Command commands[MAX_NUMBER_OF_COMMAND]; // Массив зарегистрированных команд
