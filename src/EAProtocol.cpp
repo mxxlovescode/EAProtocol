@@ -39,39 +39,57 @@ void EAprotocol::registerCommand(const char *commandName, void (*handler)(char *
     }
 }
 
-
-// Отправка команды и данных (реализация пока отсутствует)
-void EAprotocol::sendCommand(const String& command, const String& data) {
-}
-
-// Чтение данных из последовательного порта во внутренний буфер
+// Обновленный метод чтения данных из последовательного порта во внутренний буфер
 void EAprotocol::readDataToBuffer() {
-    unsigned long startMillis = millis();  // Начальное время для отслеживания таймаута
+    unsigned long startMillis = millis();
+    char c;
+    bool receivingMessage = false;
 
-    char c;  // Переменная для хранения считанного символа
+    while (millis() - startMillis < _timeout) {
+        if (_serial.available() > 0) {
+            c = _serial.read();
 
-    // Читаем данные, пока они доступны, или до истечения таймаута
-    while (millis() - startMillis < _timeout) {     
-        c = _serial.read();  // Читаем один символ
+            if (c == EAPR_START_OF_MESSAGE) {
+                // Начало нового сообщения
+                _mBuffer.clear();
+                receivingMessage = true;
+                Log.traceln(F("Получен маркер начала сообщения."));
+                continue;
+            }
 
-        if (c == -1 || c == '\r') {
-            continue; // Игнорируем символы \r или ошибку чтения
+            if (c == EAPR_COMPLETE_MESSAGE) {
+                // Конец сообщения
+                receivingMessage = false;
+                Log.noticeln(F("Сообщение полностью получено: [%s]"), _mBuffer.buf);
+                break;
+            }
+
+            if (receivingMessage) {
+                if (c == EAPR_END_OF_MESSAGE) {
+                    // Завершение текущего пакета
+                    Log.verboseln(F("Получен пакет: [%s]"), _mBuffer.buf);
+
+                    // Отправляем подтверждение
+                    _serial.write('A');
+                    Log.traceln(F("Отправлено подтверждение пакета."));
+
+                    startMillis = millis(); // Сбрасываем таймер
+                } else {
+                    if (_mBuffer.capacity() - _mBuffer.length() > 0) {
+                        _mBuffer.add(c); // Сохраняем только полезные данные
+                        startMillis = millis(); // Сбрасываем таймер при каждом новом символе
+                    } else {
+                        Log.warningln(F("Буфер переполнен. Принятые данные: [%s]"), _mBuffer.buf);
+                        _serial.write('E'); // Сообщаем об ошибке
+                        break;
+                    }
+                }
+            }
         }
-        
-        // Проверяем конец сообщения
-        if (c == _endOfMessage) {
-            Log.traceln(F("Сообщение завершено символом конца. Чтение завершено. Принятых символов: [%d]"), _mBuffer.length());
-            break; // Завершаем чтение, если получен конец сообщения
-        }
+    }
 
-        // Добавляем символ в буфер, если есть место
-        if (_mBuffer.capacity() - _mBuffer.length() > 0) {
-            _mBuffer.add(c); 
-            startMillis = millis();  // Сбрасываем таймер при каждом новом символе
-        } else {
-            Log.warning(F("Буфер переполнен. Обработка данных."));
-            processMessage(); // Обрабатываем данные при переполнении
-        }
+    if (receivingMessage) {
+        Log.errorln(F("Ошибка: Сообщение не завершено в установленное время."));
     }
 }
 
@@ -135,7 +153,7 @@ char *EAprotocol::getBuff() {
 
 // Логирование сообщений, не являющихся командами
 void EAprotocol::_handleLog() {
-    Log.noticeln(F("<---[%s]"), _mBuffer.buf);
+    Log.noticeln(F("<---[%s]->"), _mBuffer.buf);
 }
 
 // Простейший алгоритм хеширования строки
@@ -145,4 +163,59 @@ uint32_t EAprotocol::hashString(const char* str) {
         hash = (hash * 31) + *str++;  // Умножаем текущий хеш на 31 и добавляем ASCII код символа
     }
     return hash;
+}
+
+// Реализация метода отправки данных с учетом разделения на пакеты
+void EAprotocol::sendCommand(const char* message) {
+    size_t messageLength = strlen(message);
+
+    if (messageLength > MBUFFER_SIZE) {
+        Log.errorln(F("Ошибка: Размер данных превышает допустимый предел 256 байт."));
+        return;
+    }
+
+    // Добавляем маркеры начала и конца сообщения
+    _serial.write(EAPR_START_OF_MESSAGE);
+    Log.traceln(F("Отправлен маркер начала сообщения."));
+
+    size_t start = 0;
+    while (start < messageLength) {
+        // Учитываем символ конца сообщения и символ окончания строки
+        size_t remaining = messageLength - start;
+        size_t packetSize = (remaining < (MAX_PACKET_SIZE - 2)) ? remaining : (MAX_PACKET_SIZE - 2);
+
+        char packet[MAX_PACKET_SIZE]; // Размер пакета равен MAX_PACKET_SIZE
+        strncpy(packet, message + start, packetSize);
+        packet[packetSize] = EAPR_END_OF_MESSAGE; // Завершаем пакет символом конца сообщения
+        packet[packetSize + 1] = '\0'; // Завершаем строку нулевым символом
+
+        _serial.println(packet);
+        Log.verboseln(F("Отправлен пакет: [%s]"), packet);
+
+        // Ожидаем подтверждения от партнера
+        unsigned long startMillis = millis();
+        bool ackReceived = false;
+
+        while (millis() - startMillis < _timeout) {
+            if (_serial.available() > 0) {
+                char ack = _serial.read();
+                if (ack == 'A') { // Подтверждение от партнера
+                    ackReceived = true;
+                    break;
+                }
+            }
+        }
+
+        if (!ackReceived) {
+            Log.errorln(F("Ошибка: Не получено подтверждение от партнера для пакета."));
+            return;
+        }
+
+        start += packetSize;
+    }
+
+    _serial.write(EAPR_COMPLETE_MESSAGE);
+    Log.traceln(F("Отправлен маркер конца сообщения."));
+
+    Log.noticeln(F("Все пакеты успешно отправлены. Полное сообщение: [%s]"), message);
 }

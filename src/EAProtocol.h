@@ -10,9 +10,14 @@
 
 #define COMMAND_MARKER "#"          // Маркер начала команды
 #define COMMAND_DIVIDER ";"          // Разделитель внутри команды
+#define EAPR_END_OF_MESSAGE '\n'    // Символ конца сообщения 
+#define EAPR_START_OF_MESSAGE '<'    // Маркер начала сообщения
+#define EAPR_COMPLETE_MESSAGE '>'    // Маркер конца сообщения
 
 #define MBUFFER_SIZE 256             // Размер буфера для обработки сообщений
 #define MAX_NUMBER_OF_COMMAND 2      // Максимальное количество поддерживаемых команд
+#define MAX_PACKET_SIZE 64          // Максимальный размер пакета, включая символы окончания
+
 
 class EAprotocol {
 public:
@@ -33,16 +38,14 @@ public:
     // handler: обработчик команды
     void registerCommand(const char* commandName, void (*handler)(char* command_name, const char **args, const int *argCount));
 
-    // Отправка команды с данными
-    // command: имя команды
-    // data: данные для передачи
-    void sendCommand(const String &command, const String &data);
-
     // Чтение данных из последовательного порта во внутренний буфер
     void readDataToBuffer();
 
     // Возвращает содержимое буфера
     char *getBuff();
+
+    void sendCommand(const char *message); // Функция отправки сообщения
+
 
 private:
 
