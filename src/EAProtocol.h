@@ -9,7 +9,7 @@
 #include <mString.h>
 
 #define COMMAND_MARKER "#"          // Маркер начала команды
-#define COMMAND_DIVIDER ";"          // Разделитель внутри команды
+#define COMMAND_DIVIDER ";"          // Разделитель аргументов
 #define EAPR_END_OF_MESSAGE '\n'    // Символ конца сообщения 
 #define EAPR_START_OF_MESSAGE '<'    // Маркер начала сообщения
 #define EAPR_COMPLETE_MESSAGE '>'    // Маркер конца сообщения
